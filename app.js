@@ -1,258 +1,79 @@
 'use strict';
-
-const TOPICS = [
-  {id:'people', no:1, title:'사람의 생활', category:'사람', tone:'#a75a36', wash:'#fff0dd', image:'people-realistic.jpg', intro:'옷차림, 체육 시간, 꽃구경!\n우리의 하루를 살펴봐요.',
-    facts:[
-      '이 마을의 옷 가게는 더운 때 입는 얇은 옷과 추운 때 입는 두꺼운 옷을 준비해요.',
-      '학교에서는 날씨와 기온을 살펴 운동장 체육 수업을 계획해요.',
-      '마을 사람들은 봄에 벚꽃을 보러 갈 날짜를 정해 함께 나들이해요.'
-    ], question:'계절이 달라지면, 누구의 어떤 생활 모습이 달라질까요?', source:'수업용 가상 생활 자료', sourceLinks:[]},
-  {id:'mosquito', no:2, title:'모기의 생활', category:'동물', tone:'#3c7a87', wash:'#e7f3f3', image:'mosquito-realistic.jpg', intro:'작은 모기는 언제, 어디서\n살아갈까요?',
-    facts:[
-      '우리나라의 작은빨간집모기는 주로 4월부터 10월까지 활동하는 것으로 관찰돼요.',
-      '어린 모기인 유충은 물웅덩이처럼 물이 고인 곳에서 자라요.',
-      '사람들은 모기가 집에 들어오지 못하게 창문에 방충망을 설치하기도 해요.'
-    ], question:'활동하는 기간과 모기의 수는 같은 뜻일까요? 무엇을 더 알아야 할까요?', source:'질병관리청 자료를 쉽게 풀어씀', sourceLinks:[
-      {label:'모기 활동 시기·방충망 (2026.9.9.)',url:'https://www.kdca.go.kr/bbs/kdca/42/312572/artclView.do'},
-      {label:'유충이 사는 곳 (2025.7.18.)',url:'https://www.kdca.go.kr/kdca/2848/subview.do?enc=Zm5jdDF8QEB8JTJGYmJzJTJGa2RjYSUyRjQyJTJGMjE1MzMyJTJGYXJ0Y2xWaWV3LmRvJTNG'}
-    ]},
-  {id:'frog', no:3, title:'개구리의 생활', category:'동물', tone:'#527833', wash:'#edf3dd', image:'frog-realistic.jpg', intro:'북방산개구리가 알을 낳는\n때를 살펴봐요.',
-    facts:[
-      '지리산의 북방산개구리는 겨울이 끝나 갈 무렵인 2~3월에 처음 알을 낳은 모습이 관찰돼요.',
-      '북방산개구리가 알을 낳기 시작하는 때는 기온과 관련이 있어요.',
-      '북방산개구리는 곤충 등을 먹어요. 먹이가 되는 생물이 나타나는 때도 살펴볼 필요가 있어요.'
-    ], question:'겨울이 끝날 무렵 따뜻해지는 때도 빨라진다면, 어떤 일이 생길까요?', source:'환경부·국립공원관리공단 자료 (2017.2.13.)를 쉽게 풀어씀', sourceLinks:[
-      {label:'북방산개구리 산란 관찰 자료',url:'https://www.me.go.kr/home/web/board/read.do?boardId=760940&boardMasterId=1&menuId=286'}
-    ]},
-  {id:'cherry', no:4, title:'벚나무의 생활', category:'식물', tone:'#a65372', wash:'#fcecf1', image:'cherry-realistic.jpg', intro:'봄을 알리는 벚꽃은\n언제 피어날까요?',
-    facts:[
-      '벚꽃이 피는 때는 봄철 기온의 영향을 받아요.',
-      '같은 지역에서도 나무의 종류와 햇빛을 받는 정도 등에 따라 꽃 피는 때가 다를 수 있어요.',
-      '사람들은 꽃이 피고 활짝 피는 때를 관찰하며 꽃구경할 시기를 생각해요.'
-    ], question:'봄에 따뜻해지는 때도 달라진다면, 꽃과 사람의 생활은 어떻게 이어질까요?', source:'기상청 자료를 쉽게 풀어씀 · 3번은 수업용 생활 상황', sourceLinks:[
-      {label:'벚꽃 개화와 기온 (2015.4.8.)',url:'https://www.kma.go.kr/daejeon/html/news/notice_view.jsp?articleno=6056&boardId=press2&pageNo=49'}
-    ]}
+const STORAGE_KEY='season-detectives-personal-table-v2';
+const STEPS=['그래프 살펴보기','나의 예상표 쓰기','내 기록 보기'];
+const KINDS=[
+ {id:'people',name:'우리(사람)',label:'우리(사람)에게',image:'people-realistic.jpg'},
+ {id:'animals',name:'동물',label:'동물에게',image:'frog-realistic.jpg'},
+ {id:'plants',name:'식물',label:'식물에게',image:'cherry-realistic.jpg'}
 ];
-const KEY='season-detectives-personal-v1';
-const STEPS=['자료 고르기','혼자 예상하기','서로 이야기하기','생각 다듬기'];
-const textFields=['first','reason','heard','connection','final','question'];
-let storageOK=true;
-let state={version:1,topic:null,step:0,name:'',drafts:{}};
-let toastTimeout, saveTimeout, timerInterval, audioContext;
-let timer={seconds:300,remaining:300,end:null,running:false,warned:false};
-const main=document.querySelector('#main');
-const dialog=document.querySelector('#dialog');
-const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const topicById=id=>TOPICS.find(t=>t.id===id);
-const topic=()=>topicById(state.topic);
-const theme=t=>`--tone:${t.tone};--wash:${t.wash}`;
-const freshDraft=()=>({first:'',reason:'',heard:'',connection:'',final:'',question:'',revealed:false,evidence:[],connected:[],change:'',complete:false,maxStep:1,checks:[false,false,false]});
-function draft(){if(!state.drafts[state.topic])state.drafts[state.topic]=freshDraft();return state.drafts[state.topic];}
-function restore(){
-  try{
-    const raw=JSON.parse(localStorage.getItem(KEY)||'null');
-    if(!raw||raw.version!==1)return;
-    state.name=typeof raw.name==='string'?raw.name.slice(0,30):'';
-    for(const t of TOPICS){
-      const saved=raw.drafts?.[t.id];if(!saved||typeof saved!=='object')continue;
-      const d=freshDraft();
-      for(const f of textFields)if(typeof saved[f]==='string')d[f]=saved[f].slice(0,1200);
-      d.evidence=Array.isArray(saved.evidence)?[...new Set(saved.evidence.filter(n=>Number.isInteger(n)&&n>=0&&n<3))]:[];
-      d.connected=Array.isArray(saved.connected)?saved.connected.filter(id=>topicById(id)&&id!==t.id):[];
-      d.revealed=saved.revealed===true;d.complete=saved.complete===true;
-      d.maxStep=Number.isInteger(saved.maxStep)?Math.min(3,Math.max(1,saved.maxStep)):1;
-      d.change=['보충했어요','바꾸었어요','근거가 더 분명해졌어요'].includes(saved.change)?saved.change:'';
-      d.checks=Array.isArray(saved.checks)?[0,1,2].map(i=>saved.checks[i]===true):[false,false,false];
-      state.drafts[t.id]=d;
-    }
-    if(topicById(raw.topic)){
-      state.topic=raw.topic;
-      state.step=Number.isInteger(raw.step)?Math.min(draft().maxStep,Math.max(0,raw.step)):0;
-    }
-  }catch(e){storageOK=false;}
+const SEASONS=[{id:'summer',title:'여름이 길어진다면',short:'여름'},{id:'winter',title:'겨울이 짧아진다면',short:'겨울'}];
+const CELL_KEYS=KINDS.flatMap(k=>SEASONS.map(s=>k.id+'_'+s.id));
+const material=id=>REFERENCE_MATERIALS.find(m=>m.id===id);
+const PLANT_SOURCE={label:'농촌진흥청 농사로 · 물관리',url:'https://www.nongsaro.go.kr/portal/ps/psz/psza/contentMain.ps?menuId=PS04108'};
+const HELPS={
+ people_summer:{material:'people',facts:[material('people').facts[0],material('people').facts[1]],questions:['더운 기간이 길어지면 옷을 입는 기간이나 야외활동의 모습은 어떻게 달라질까요?','누구의 어떤 생활을 예상하는지 한 가지를 골라 보세요.'],source:'수업용 가상 생활 자료',links:[]},
+ people_winter:{material:'people',facts:[material('people').facts[0],'이 마을의 친구들은 추운 때에 겨울옷을 입고, 겨울에 즐길 놀이를 계획해요.'],questions:['추운 기간이 짧아지면 겨울옷을 입는 기간이나 놀이 계획은 어떻게 달라질까요?','겨울옷을 파는 사람과 사는 사람은 각각 어떤 경험을 할까요?'],source:'수업용 가상 생활 자료',links:[]},
+ animals_summer:{material:'mosquito',facts:material('mosquito').facts.slice(0,2),questions:['따뜻한 시기가 길어진다면, 이 동물을 만나는 기간은 어떻게 달라질까요?','활동하는 기간과 동물의 수는 같은 뜻일까요? 수를 예상하려면 무엇도 알아야 할까요?'],source:material('mosquito').source,links:material('mosquito').sourceLinks},
+ animals_winter:{material:'frog',facts:material('frog').facts,questions:['겨울이 끝날 무렵 따뜻해지는 때도 달라진다면, 알을 낳는 때는 어떨까요?','먹이가 나타나는 때도 함께 살펴봐야 할까요? 내가 아는 다른 동물을 떠올려도 좋아요.'],source:material('frog').source,links:material('frog').sourceLinks},
+ plants_summer:{material:'cherry',facts:['식물이 자라는 데에는 빛과 물, 알맞은 온도가 필요해요.','식물에 물을 주는 양과 시기는 식물의 종류와 온도, 빛 등 주변 환경에 따라 달라져요.'],questions:['여름이 길어진다면 식물이 자라는 모습이나 식물을 돌보는 기간은 어떻게 달라질까요?','모든 식물이 같을까요? 식물의 종류와 물이 있는지도 생각해 보세요.'],source:'농촌진흥청 농사로 자료를 쉽게 풀어씀',links:[PLANT_SOURCE]},
+ plants_winter:{material:'cherry',facts:material('cherry').facts.slice(0,2),questions:['겨울이 끝난 뒤 따뜻해지는 때까지 달라진다면, 꽃 피는 때는 어떨까요?','꽃 피는 때를 예상하려면 겨울의 길이 말고 무엇도 더 살펴봐야 할까요?'],source:'기상청 자료를 쉽게 풀어씀',links:material('cherry').sourceLinks}
+};
+const freshState=()=>({version:2,step:0,name:'',question:'',comparison:{summer:'',winter:'',checked:false},cells:Object.fromEntries(CELL_KEYS.map(k=>[k,{prediction:'',reason:''}]))});
+let state=freshState();
+let activeCellKey='people_summer';
+let storageOK=true,saveTimeout,toastTimeout,storageNotice=false;
+const main=document.querySelector('#main'),dialog=document.querySelector('#dialog');
+const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function restore(){try{const data=JSON.parse(localStorage.getItem(STORAGE_KEY)||'null');if(!data||data.version!==2)return;state.step=Number.isInteger(data.step)?Math.min(2,Math.max(0,data.step)):0;state.name=typeof data.name==='string'?data.name.slice(0,30):'';state.question=typeof data.question==='string'?data.question.slice(0,500):'';for(const k of CELL_KEYS){const cell=data.cells?.[k];if(!cell||typeof cell!=='object')continue;state.cells[k].prediction=typeof cell.prediction==='string'?cell.prediction.slice(0,500):'';state.cells[k].reason=typeof cell.reason==='string'?cell.reason.slice(0,300):'';}for(const s of SEASONS)state.comparison[s.id]=String(data.comparison?.[s.id]??'').replace(/\D/g,'').slice(0,3);state.comparison.checked=data.comparison?.checked===true;}catch(e){storageOK=false;}}
+function save(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(state));storageOK=true;}catch(e){storageOK=false;}const inputMessage=document.querySelector('.input-tools span');if(inputMessage)inputMessage.textContent=storageOK?'작성한 내용은 자동 저장돼요.':'마친 뒤 파일로 저장해 주세요.';const el=document.querySelector('#save-state');el.classList.toggle('error',!storageOK);el.textContent=storageOK?'이 기기에 저장했어요':'자동 저장 불가 · 파일로 남겨 주세요';clearTimeout(saveTimeout);if(storageOK)saveTimeout=setTimeout(()=>el.textContent='이 기기에 자동 저장',1700);else if(!storageNotice){storageNotice=true;toast('자동 저장이 어려운 브라우저예요. 활동 뒤 이미지나 글로 저장해 주세요.');}}
+function toast(message){const t=document.querySelector('#toast');t.textContent=message;t.classList.add('visible');clearTimeout(toastTimeout);toastTimeout=setTimeout(()=>t.classList.remove('visible'),3800);}
+const countWritten=()=>CELL_KEYS.filter(k=>state.cells[k].prediction.trim()).length;
+function updateCounter(){document.querySelectorAll('[data-counter]').forEach(el=>el.textContent=countWritten()+' / 6칸 기록');for(const key of CELL_KEYS)document.querySelectorAll('[data-action="reason"][data-key="'+key+'"]').forEach(b=>{const yes=!!state.cells[key].reason.trim();b.textContent=yes?'까닭 기록 ✓':'까닭도 적기';b.classList.toggle('filled',yes);});}
+function go(step){if(!Number.isInteger(step)||step<0||step>2)return;state.step=step;save();render();main.focus({preventScroll:true});window.scrollTo({top:0,behavior:'instant'});}
+function renderSteps(){document.querySelector('#steps').innerHTML=STEPS.map((label,i)=>'<button type="button" class="step '+(state.step===i?'current':'')+'" data-action="step" data-step="'+i+'" '+(state.step===i?'aria-current="step"':'')+'><i aria-hidden="true">'+(i+1)+'</i><span>'+label+'</span><span class="step-caret" aria-hidden="true">›</span></button>').join('');document.querySelector('#rail-step').textContent='STEP '+(state.step+1)+'/3';}
+function renderRail(){
+ const rail=document.querySelector('#rail-content');
+ const compact=document.querySelector('#compact-help');compact.dataset.action=state.step===0?'graph':state.step===1?'help':'guide';compact.dataset.key=activeCellKey;compact.textContent=state.step===0?'그래프 크게 ⛶':state.step===1?'사진·생각 도움 ↗':'활동 안내';compact.setAttribute('aria-label',state.step===1?'현재 칸의 사진과 생각 도움 열기':state.step===0?'교과서 그래프 크게 보기':'활동 안내 열기');
+ if(state.step===0){rail.innerHTML='<section class="rail-focus"><span class="eyebrow">오늘의 질문</span><h3>계절의 길이가 달라지면<br>어떤 일이 일어날까요?</h3><p>그래프에서 여름과 겨울의 길이를 먼저 살펴봐요.</p></section><div class="rail-periods"><span>1912~1940년</span><b aria-hidden="true">↓</b><span>1991~2020년</span></div><div class="rail-tip"><b>그래프 읽는 순서</b><p>① 두 기간을 찾아요.<br>② 여름과 겨울의 일수를 읽어요.<br>③ 얼마나 달라졌는지 비교해요.</p></div><p class="rail-source">교과서 88쪽 그래프 · 원자료 기상청</p>';return;}
+ if(state.step===1){const [ki,si]=activeCellKey.split('_'),kind=KINDS.find(k=>k.id===ki),season=SEASONS.find(s=>s.id===si),h=HELPS[activeCellKey],m=material(h.material);rail.innerHTML='<section class="rail-focus"><span class="eyebrow">지금 생각하는 칸</span><h3>'+kind.label+' 일어날 일</h3><span class="season-chip '+si+'">'+season.title+'</span></section><figure class="rail-photo"><img src="assets/'+m.image+'" alt="'+m.title+' 참고 이미지, AI 생성"><figcaption>'+m.title+' · AI 생성 참고 이미지</figcaption></figure><button type="button" class="rail-help" data-action="help" data-key="'+activeCellKey+'">이 칸 생각 도움 열기 <span aria-hidden="true">↗</span></button><div class="rail-tip"><b>내 생각을 직접 써요</b><p>사진과 생활 자료를 보고 예상해요. 다른 칸을 누르면 생각할 대상이 바뀌어요.</p></div>';return;}
+ rail.innerHTML='<section class="rail-focus"><span class="eyebrow">나의 활동 기록</span><h3>여섯 칸을 한눈에 읽고<br>생각을 다듬어 봐요.</h3><div class="rail-count" data-counter>'+countWritten()+' / 6칸 기록</div></section><div class="rail-mini-photos">'+KINDS.map(k=>'<figure><img src="assets/'+k.image+'" alt=""><figcaption>'+k.name+'</figcaption></figure>').join('')+'</div><div class="rail-tip"><b>저장하기 전에 살펴봐요</b><p>예상한 일이 구체적인가요?<br>까닭과 예상이 이어지나요?<br>더 궁금한 점은 무엇인가요?</p></div><p class="rail-source">내 기록은 이 기기에만 저장돼요.<br>이미지나 글로 따로 남길 수 있어요.</p>';
 }
-function save(){
-  try{localStorage.setItem(KEY,JSON.stringify(state));storageOK=true;}catch(e){storageOK=false;}
-  const status=document.querySelector('#save-state');
-  status.classList.toggle('error',!storageOK);
-  status.textContent=storageOK?'이 기기에 저장했어요':'자동 저장 불가 · 기록을 내려받아 주세요';
-  clearTimeout(saveTimeout);
-  if(storageOK)saveTimeout=setTimeout(()=>{status.textContent='이 기기에 자동 저장';},1800);
-}
-function toast(message){const el=document.querySelector('#toast');el.textContent=message;el.classList.add('visible');clearTimeout(toastTimeout);toastTimeout=setTimeout(()=>el.classList.remove('visible'),3500);}
-function navigate(step){
-  if(step>0&&!topic())return;
-  if(step>0&&step>draft().maxStep)return;
-  state.step=step;save();render();main.focus({preventScroll:true});window.scrollTo({top:0,behavior:'instant'});
-}
-function renderProgress(){
-  const max=topic()?draft().maxStep:0;
-  document.querySelector('#progress').innerHTML=STEPS.map((label,i)=>`${i?'<span class="step-sep" aria-hidden="true">›</span>':''}<button type="button" class="step ${state.step===i?'current':i<state.step?'done':''}" data-action="step" data-step="${i}" ${i>max?'disabled':''} ${state.step===i?'aria-current="step"':''}><span class="num" aria-hidden="true">${i<state.step?'✓':i+1}</span>${label}</button>`).join('');
-}
-function sourceLine(t){return `<div class="source-line">${esc(t.source)}${t.sourceLinks.length?` · <button class="text-button" style="font-size:11px;padding:0" data-action="sources" type="button">출처 보기 ↗</button>`:''}</div>`;}
-function field(label,key,value,placeholder='',rows=3,helper=''){
-  return `<label class="field"><span>${label}</span><textarea data-field="${key}" rows="${rows}" maxlength="1200" placeholder="${esc(placeholder)}">${esc(value)}</textarea>${helper?`<small class="helper">${helper}</small>`:''}</label>`;
-}
-function title(heading,description){const t=topic();return `<div class="view-title"><div><h2>${heading}</h2><p>${description}</p></div><span class="topic-badge" style="${theme(t)}">자료 ${t.no} · ${t.title}</span></div>`;}
-function renderHome(){
-  const current=topic();
-  return `${current?`<div class="resume-bar"><span><b>${current.title}</b> 자료의 기록이 남아 있어요.</span><button type="button" class="button secondary small" data-action="resume">이어서 활동하기 →</button></div>`:''}
-  <section class="hero" aria-labelledby="home-title"><div><div class="eyebrow">SEASON DETECTIVES</div><h1 id="home-title"><span class="summer">여름은 길어지고,</span><br><span class="winter">겨울은 짧아진다면?</span></h1><p>서로 다른 자료 속 단서를 모아<br>우리 생활과 생물의 모습을 예상해 봐요.</p></div>
-  <div class="season-note"><div class="note-title"><b>교과서 속 두 기간을 비교해요</b><span aria-hidden="true">☀ ❄</span></div><div class="season-pair"><div class="season-stat"><span>여름의 길이</span><b>+20일</b></div><div class="season-stat blue"><span>겨울의 길이</span><b>−22일</b></div></div><small>1912~1940년 → 1991~2020년 · 교과서 88쪽</small><button type="button" data-action="seasons">숫자 살펴보기 ↗</button></div></section>
-  <section aria-labelledby="choose-title"><div class="section-line"><h2 id="choose-title">내가 살펴볼 자료를 골라요</h2><span>친구와 다른 자료를 하나씩!</span></div><div class="topics">${TOPICS.map(t=>`<article class="topic-card" style="${theme(t)}"><div class="topic-photo"><img class="topic-art" src="assets/${t.image}" alt="${artAlt(t.id)}" width="1536" height="1024"><span class="ai-image-tag">AI 생성 이미지</span></div><div class="topic-body"><div class="topic-meta"><span>자료 0${t.no}</span><span class="category">${t.category}</span></div><h3>${t.title}</h3><p>${esc(t.intro).replace('\n','<br>')}</p><button type="button" class="button" data-action="choose" data-id="${t.id}">${state.drafts[t.id]?'이 자료 이어 보기':'이 자료 고르기'} <span aria-hidden="true">→</span></button></div></article>`).join('')}</div></section>
-  <div class="home-tip"><span class="tip-mark">함께하는 방법</span><span>네 사람이 자료를 나눠 읽고, 태블릿 화면을 서로 보여 주며 이야기해요.</span></div>
-  <div class="mobile-data-link"><button type="button" class="text-button" data-action="seasons">교과서 속 계절의 길이 살펴보기</button></div>`;
-}
-function artAlt(id){return {people:'운동장에서 공놀이하는 어린이의 실사형 이미지 (AI 생성)',mosquito:'물가 풀잎에 앉은 모기의 실사형 접사 이미지 (AI 생성)',frog:'물가에 앉은 갈색 개구리의 실사형 이미지 (AI 생성)',cherry:'봄 공원에 벚꽃이 핀 나무의 실사형 이미지 (AI 생성)'}[id];}
-function renderAlone(){
-  const t=topic(),d=draft();
-  return `${title('내 예상에 단서를 더해요','먼저 예상하고, 자료를 읽으며 근거가 되는 문장을 골라요.')}
-  <div class="work-grid"><section class="panel"><figure class="material-figure"><img src="assets/${t.image}" alt="${artAlt(t.id)}" width="640" height="400"><figcaption>AI로 만든 실사형 이미지</figcaption></figure><span class="first-tag">자료를 읽기 전</span>${field('1. 처음에는 이렇게 예상했어요','first',d.first,'여름이 길어지거나 겨울이 짧아지면…',3,'자료를 이미 읽었다면, 처음 떠오른 생각을 적어도 좋아요.')}</section>
-  <section class="panel ${d.revealed?'':'tint'}" id="clue-panel">${d.revealed?`<h3>2. 자료에서 근거를 찾아요</h3><p class="fact-help">내 예상과 관련 있는 문장을 눌러 골라요. 여러 개 골라도 좋아요.</p><div class="facts">${t.facts.map((f,i)=>`<button type="button" class="fact ${d.evidence.includes(i)?'selected':''}" aria-pressed="${d.evidence.includes(i)}" data-action="evidence" data-index="${i}"><span class="check" aria-hidden="true">✓</span><span>${f}</span></button>`).join('')}</div>${sourceLine(t)}${field('3. 이 문장이 내 예상의 근거인 까닭은?','reason',d.reason,'자료의 내용과 내 예상이 어떻게 이어지는지 적어요.',2)}<div class="question-chip"><b>한 걸음 더 생각하기</b>${t.question}</div>`:`<div class="material-closed"><div class="closed-art" aria-hidden="true">⌕</div><h3>자료 속 단서를 만나 볼까요?</h3><p>왼쪽에 내 예상을 먼저 적고<br>단서를 열어 살펴봐요.</p><button type="button" class="button" data-action="reveal">자료의 단서 열기 →</button><small>내 생각을 확인할 단서 3개가 있어요.</small></div>`}</section></div>
-  <p class="validation" id="validation" role="alert"></p><div class="action-row"><button type="button" class="button secondary" data-action="home">← 자료 다시 고르기</button><span class="note">내 기록은 다른 자료를 골라도 남아 있어요.</span><button type="button" class="button" data-action="to-talk">친구들과 이야기하기 →</button></div>`;
-}
-function showCard(big=false){
-  const t=topic(),d=draft();
-  return `<article class="show-card" style="${theme(t)}"><div class="show-head"><img src="assets/${t.image}" alt="" width="640" height="400"><div><small>자료 ${t.no} · ${t.category}</small><${big?'h2':'h3'}>${t.title}</${big?'h2':'h3'}></div></div><div class="show-body"><div class="show-block"><div class="show-label">나의 예상</div><p class="show-text">${esc(d.first)||'<span class="empty">아직 적은 내용이 없어요.</span>'}</p></div><div class="show-block"><div class="show-label">자료에서 찾은 근거</div>${d.evidence.map(i=>`<p class="show-quote">${esc(t.facts[i])}</p>`).join('')||'<span class="empty">선택한 근거가 없어요.</span>'}</div><div class="show-block"><div class="show-label">그렇게 연결한 까닭</div><p class="show-text">${esc(d.reason)||'<span class="empty">아직 적은 내용이 없어요.</span>'}</p></div></div></article>`;
-}
-function renderTalk(){
-  const t=topic(),d=draft();
-  return `${title('태블릿을 보여 주며 이야기해요','한 사람씩 설명하고, 듣는 친구는 근거를 묻거나 다른 자료와 연결해 봐요.')}
-  <div class="talk-grid"><div><div class="section-line"><h3>내가 친구들에게 알려줄 이야기</h3><button type="button" class="button secondary small" data-action="present">크게 보여 주기 ⛶</button></div>${showCard()}</div>
-  <div class="talk-side"><section class="panel"><h3>네 사람이 모두 이야기해요</h3><ol class="talk-guide"><li>내 자료의 사실과 예상을 알려줘요.</li><li>친구는 “어느 내용을 보고 그렇게 생각했어?”라고 물어요.</li><li>네 자료 중 서로 이어지는 내용을 찾아요.</li></ol><div class="discussion-question">“이 변화가 다른 생물이나 사람에게도 이어질까?”<br>“아직 더 알아봐야 할 것은 없을까?”</div></section><section class="panel">${field('친구의 말에서 새로 알게 된 점 <small class="quiet-label">선택</small>','heard',d.heard,'친구의 자료나 설명에서 새롭게 생각한 점은?',2)}<div class="connect-title">내 자료와 이어 본 친구의 자료 <span class="quiet-label">선택</span></div><div class="connect-topics">${TOPICS.filter(x=>x.id!==t.id).map(x=>`<button class="topic-pill ${d.connected.includes(x.id)?'selected':''}" type="button" aria-pressed="${d.connected.includes(x.id)}" data-action="connect" data-id="${x.id}">${x.title}</button>`).join('')}</div>${field('어떻게 이어질까요? <small class="quiet-label">선택</small>','connection',d.connection,'두 자료가 이어진다고 생각한 까닭은?',2)}</section></div></div>
-  <div class="action-row"><button type="button" class="button secondary" data-action="step" data-step="1">← 내 자료 다시 보기</button><span class="note">토의 메모는 원하는 만큼만 적어요.</span><button type="button" class="button" data-action="to-final">내 생각 다듬기 →</button></div>`;
-}
-const changes=['보충했어요','바꾸었어요','근거가 더 분명해졌어요'];
-function summaryHTML(){
-  const d=draft(),t=topic();
-  const item=(label,value)=>`<div class="summary-item"><b>${label}</b><p>${esc(value)||'<span class="empty">아직 적은 내용이 없어요.</span>'}</p></div>`;
-  return `<div class="summary-list">${item('내가 다듬은 예상',d.final)}${item('자료에서 찾은 근거',d.evidence.map(i=>t.facts[i]).join('\n'))}${item('그렇게 연결한 까닭',d.reason)}${d.connection?item('다른 자료와 이어 본 생각',d.connection):''}${item('앞으로 확인하고 싶은 질문',d.question)}</div>`;
-}
-function renderFinal(){
-  const t=topic(),d=draft();
-  return `${title('이야기 나눈 뒤, 내 생각은?','처음 생각을 고치거나 보충해요. 같은 생각이라면 근거를 더해도 좋아요.')}
-  ${d.complete?'<div class="complete-banner"><span><b>나의 탐구 기록을 완성했어요!</b> 파일로 저장해 두거나, 친구들에게 보여 주세요.</span><span aria-hidden="true">✦</span></div>':''}
-  <div class="work-grid"><section class="panel"><div class="record-header"><h3>내 생각을 다듬어요</h3><label class="field name-field"><input data-field="name" type="text" maxlength="30" placeholder="이름 (선택)" aria-label="기록에 넣을 이름 (선택)" value="${esc(state.name)}"></label></div><div class="compare-card"><small>나의 첫 예상</small><p>${esc(d.first)||'아직 적은 내용이 없어요.'}</p></div><div class="change-options" aria-label="내 생각의 변화">${changes.map((c,i)=>`<button type="button" class="choice ${d.change===c?'selected':''}" aria-pressed="${d.change===c}" data-action="change" data-index="${i}">${c}</button>`).join('')}</div>${field('토의 후, 나는 이렇게 예상해요','final',d.final,'근거를 더하거나, 조건을 넣거나, 생각을 고쳐 적어요.',4)}${field('단원을 배우며 확인하고 싶은 질문','question',d.question,'더 알아봐야 할 점을 질문으로 남겨요.',2)}<div class="check-list"><label><input type="checkbox" data-check="0" ${d.checks[0]?'checked':''}>자료의 근거와 내 예상을 연결했나요?</label><label><input type="checkbox" data-check="1" ${d.checks[1]?'checked':''}>친구의 설명을 듣고 생각을 나누었나요?</label><label><input type="checkbox" data-check="2" ${d.checks[2]?'checked':''}>아직 모르는 것을 질문으로 남겼나요?</label></div></section>
-  <section class="panel tint"><div class="section-line"><h3>나의 탐구 기록</h3><span>${t.title}</span></div><div id="live-summary">${summaryHTML()}</div><div class="download-actions"><button type="button" class="button" data-action="image">기록 이미지 저장 ↓</button><button type="button" class="button secondary" data-action="text">글로 저장 ↓</button><button type="button" class="button ghost" data-action="print">인쇄</button></div><p class="source-line">자동 저장은 이 기기·이 브라우저에서만 이어져요.<br>새로 들어올 친구가 있다면, 먼저 파일로 저장하고 기록을 지워요.</p></section></div>
-  <p class="validation" id="validation" role="alert"></p><div class="action-row"><button type="button" class="button secondary" data-action="step" data-step="2">← 친구들과 더 이야기하기</button><button type="button" class="button" data-action="complete">${d.complete?'기록 완성 확인 ✓':'나의 탐구 마치기 ✓'}</button></div>`;
-}
-function render(){renderProgress();main.innerHTML=[renderHome,renderAlone,renderTalk,renderFinal][state.step]();if(!storageOK){const el=document.querySelector('#save-state');el.classList.add('error');el.textContent='자동 저장 불가 · 기록을 내려받아 주세요';}}
-function showValidation(message,fieldName){
-  const el=document.querySelector('#validation');if(el)el.textContent=message;
-  if(fieldName)document.querySelector(`[data-field="${fieldName}"]`)?.focus();else el?.scrollIntoView({block:'nearest'});
-}
-function openDialog(title,body,big=false){
-  dialog.classList.toggle('big-dialog',big);
-  document.querySelector('#dialog-content').innerHTML=`<div class="dialog-head"><h2 id="dialog-title">${title}</h2><button type="button" class="close" data-action="close" aria-label="닫기">×</button></div><div class="dialog-body">${body}</div>`;
-  if(!dialog.open)dialog.showModal();
-  dialog.scrollTop=0;
-}
-function showSources(){openDialog('자료는 어디에서 왔나요?',`<ul class="sources-list"><li><b>교과서의 계절 길이</b><p>제공된 4학년 과학 교과서 88쪽(원자료: 기상청). 1912~1940년과 1991~2020년의 여름·겨울 길이를 비교했습니다.</p></li>${TOPICS.map(t=>`<li><b>자료 ${t.no} · ${t.title}</b><p>${t.source}</p>${t.sourceLinks.map(l=>`<a href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">${l.label} ↗</a>`).join('<br>')}${t.id==='frog'?'<p>자료는 지리산의 북방산개구리 관찰에 관한 내용입니다. 모든 개구리가 같은 시기에 알을 낳는다는 뜻은 아닙니다.</p>':''}</li>`).join('')}</ul><p class="source-notice">생물 자료는 공식 기관의 글에서 평소 생활과 관련된 내용만 골라 4학년이 읽기 쉽게 풀어썼습니다. 자료 이미지는 AI로 만든 실사형 참고 이미지입니다. 특정 장소에서 촬영한 관찰 사진은 아닙니다. 원문의 변화 결과는 학생이 스스로 예상할 수 있도록 자료 카드에 넣지 않았습니다.</p>`);}
-function showSeasons(){openDialog('계절의 길이, 얼마나 달라졌을까요?',`<p>교과서 88쪽에 제시된 <b>두 기간의 자료</b>를 비교해요.</p><table class="chart-table"><thead><tr><th scope="col">계절</th><th scope="col">1912~1940년</th><th scope="col">1991~2020년</th><th scope="col">길이의 차이</th></tr></thead><tbody><tr><th scope="row">여름</th><td>98일</td><td>118일</td><td style="color:#ae5938"><b>20일 길어짐</b></td></tr><tr><th scope="row">겨울</th><td>109일</td><td>87일</td><td style="color:#40778c"><b>22일 짧아짐</b></td></tr></tbody></table><p class="chart-note">자료: 제공된 과학 교과서 88쪽(원자료: 기상청). 올해의 여름·겨울 길이를 나타낸 수치가 아닙니다.</p><div class="question-chip"><b>오늘의 질문</b>이런 변화가 이어진다면, 사람과 생물에게 어떤 일이 일어날까요?</div>`);}
-function showGuide(){
-  openDialog('함께 수업하는 방법',`<p><b>오늘의 배움</b> · 여름이 길어지고 겨울이 짧아질 때의 모습을 자료를 근거로 예상해 봅시다.</p><div class="guide-flow"><div><b>① 자료 고르기</b>모둠에서 다른 자료를 하나씩 골라요.<br>약 3분</div><div><b>② 혼자 예상하기</b>첫 예상 → 단서 읽기 → 근거 고르기<br>약 9분</div><div><b>③ 서로 이야기하기</b>한 명씩 화면을 보여 주며 설명해요.<br>약 12분</div><div><b>④ 생각 다듬기</b>예상을 보충하고 질문을 남겨요.<br>약 6분</div></div><div class="teacher-note"><b>선생님께</b><br>도입 5분, 모둠별 핵심 예상 나누기 5분을 더하면 40분 수업으로 운영할 수 있습니다. 이번 시간은 계절 변화에 관심을 갖고, 자료로 예상하며 질문을 만드는 도입 활동입니다. 기후 변화 현상의 종류·원인·피해·대응 방법에 대한 정리는 다음 차시에 남겨 둡니다.<br>4인 모둠은 자료를 하나씩, 인원이 다르면 같은 자료를 함께 맡거나 한 사람이 자료 두 개를 맡아도 됩니다.</div><h3>태블릿에서는 이렇게 해요</h3><p>입장 절차 없이 각자 자료를 고릅니다. 토의 화면의 <b>‘크게 보여 주기’</b>를 눌러 서로의 화면을 봅니다. 작성한 기록은 같은 기기·브라우저에 자동 저장되며, 친구 기기와는 연결되지 않습니다. 이미지나 글 파일로 개인 기록을 내려받을 수 있습니다.</p><div class="timer"><h3 style="margin:0">활동 타이머</h3><div id="timer-display" class="timer-display" role="timer" aria-label="남은 시간">${formatTime(timer.remaining)}</div><div class="timer-presets">${[3,5,8,10,12].map(m=>`<button type="button" class="button secondary small" data-action="timer-preset" data-minutes="${m}">${m}분</button>`).join('')}</div><div class="timer-controls"><button type="button" class="button" data-action="timer-start" id="timer-toggle">${timer.running?'일시정지':'시작'}</button><button type="button" class="button secondary" data-action="timer-reset">다시 맞추기</button></div><div class="timer-status" id="timer-status">${timer.running?'타이머가 흐르고 있어요.':'시작하면 5초 전 알림음과 종료음이 나와요.'}</div></div>`);
-}
-function formatTime(n){return`${String(Math.floor(n/60)).padStart(2,'0')}:${String(n%60).padStart(2,'0')}`;}
-function initAudio(){try{audioContext??=new(window.AudioContext||window.webkitAudioContext)();if(audioContext.state==='suspended')audioContext.resume();}catch(e){}}
-function beep(end=false){
-  if(!audioContext)return;
-  try{for(let i=0;i<(end?3:1);i++){const o=audioContext.createOscillator(),g=audioContext.createGain(),at=audioContext.currentTime+i*.38;o.type='sine';o.frequency.value=end?740:520;g.gain.setValueAtTime(0,at);g.gain.linearRampToValueAtTime(.32,at+.02);g.gain.exponentialRampToValueAtTime(.001,at+.28);o.connect(g);g.connect(audioContext.destination);o.start(at);o.stop(at+.3);}}catch(e){}
-}
-function updateTimer(){
-  if(timer.running){timer.remaining=Math.max(0,Math.ceil((timer.end-Date.now())/1000));if(timer.remaining<=5&&timer.remaining>0&&!timer.warned){timer.warned=true;beep();}if(timer.remaining===0){timer.running=false;clearInterval(timerInterval);beep(true);toast('활동 시간이 끝났어요. 생각을 마무리해요.');}}
-  const el=document.querySelector('#timer-display');if(el){el.textContent=formatTime(timer.remaining);el.classList.toggle('ending',timer.remaining<=5);document.querySelector('#timer-toggle').textContent=timer.running?'일시정지':'시작';document.querySelector('#timer-status').textContent=timer.remaining===0?'시간이 끝났어요.':timer.running?'창을 닫아도 타이머는 계속 흘러요.':'5초 전 알림음 · 종료음';}
-}
-function stopTimer(){if(timer.running)updateTimer();timer.running=false;clearInterval(timerInterval);}
-function dateString(){return new Date().toLocaleDateString('ko-KR',{timeZone:'Asia/Seoul',year:'numeric',month:'long',day:'numeric'});}
-function recordSections(){
-  const d=draft(),t=topic();
-  return [
-    ['처음 예상',d.first],['자료에서 찾은 근거',d.evidence.map(i=>t.facts[i]).join('\n')],['그렇게 연결한 까닭',d.reason],
-    ['친구에게 듣고 새로 알게 된 점',d.heard],['이어 본 친구의 자료',d.connected.map(id=>topicById(id).title).join(', ')],['다른 자료와 이어 본 생각',d.connection],
-    ['내 생각의 변화',d.change],['토의 후 다듬은 예상',d.final],['앞으로 확인하고 싶은 질문',d.question]
-  ];
-}
+function title(heading,description,showCount=false){return '<div class="page-title"><div><h1>'+heading+'</h1><p>'+description+'</p></div>'+(showCount?'<div class="count" data-counter aria-live="polite">'+countWritten()+' / 6칸 기록</div>':'')+'</div>';}
+function dataTable(){return '<table class="data-table"><thead><tr><th scope="col">계절</th><th scope="col">1912~1940년</th><th scope="col">1991~2020년</th></tr></thead><tbody><tr><th scope="row" class="summer-text">여름</th><td>98일</td><td>118일</td></tr><tr><th scope="row" class="winter-text">겨울</th><td>109일</td><td>87일</td></tr></tbody></table>';}
+function comparisonFeedback(){if(!state.comparison.checked)return '';const a=state.comparison.summer,b=state.comparison.winter;if(!a||!b)return '그래프의 수를 비교해 두 빈칸에 일수를 적어 보세요.';const correct=Number(a)===20&&Number(b)===22;return (correct?'두 기간의 차이를 잘 찾았어요. ':'두 기간의 차이를 다시 살펴봐요. ')+'여름은 118 − 98 = 20일 길어졌고, 겨울은 109 − 87 = 22일 짧아졌어요.';}
+function graphPage(){return title('<span class="summer-text">여름이 길어지고,</span> <span class="winter-text">겨울이 짧아진다면?</span>','교과서 그래프를 보고 계절의 길이를 비교해 봐요.')+'<div class="graph-grid"><figure class="graph-card"><div class="graph-header"><h2>교과서 88쪽 그래프</h2><button type="button" class="button secondary small" data-action="graph">크게 보기 ⛶</button></div><button type="button" class="textbook-graph" data-action="graph" aria-label="교과서 계절 길이 원형 그래프 크게 보기"><img src="assets/textbook-season-graph.png" width="1022" height="728" alt="교과서의 원형 그래프. 1912~1940년 여름 98일, 겨울 109일. 1991~2020년 여름 118일, 겨울 87일."></button><figcaption class="graph-caption"><strong>안쪽 고리</strong>는 1912~1940년, <strong>바깥쪽 고리</strong>는 1991~2020년이에요.<br>제공된 교과서 88쪽 그래프 발췌 · 원자료: 기상청</figcaption></figure><section class="read-card"><h2>두 기간의 수를 비교해요</h2>'+dataTable()+'<p class="period-note">교과서에 나온 두 기간의 자료예요. 올해의 여름과 겨울 길이를 뜻하는 수치는 아니에요.</p><div class="compare-fields">'+SEASONS.map(s=>'<label class="compare-box '+s.id+'"><span>'+s.short+'은</span><input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="3" data-compare="'+s.id+'" value="'+esc(state.comparison[s.id])+'" aria-label="'+s.short+' 길이의 차이, 일"> 일<br>'+(s.id==='summer'?'길어졌어요.':'짧아졌어요.')+'</label>').join('')+'</div><button type="button" class="text-button" data-action="compare">두 기간의 차이 확인하기</button><div id="compare-feedback" class="compare-feedback" role="status">'+comparisonFeedback()+'</div></section></div><div class="graph-question"><b>오늘 내가 생각할 일</b>이런 변화가 이어진다면 <strong>우리(사람), 동물, 식물</strong>에게 어떤 일이 일어날까요?</div><div class="action-row"><span class="note">교과서 89쪽처럼 여름과 겨울을 나누어 내 생각을 정리해요.</span><button type="button" class="button" data-action="step" data-step="1">나의 예상표 쓰기 →</button></div>';}
+function categoryHeader(kind){return '<th scope="row" class="category-heading" id="kind-'+kind.id+'"><img class="category-photo" src="assets/'+kind.image+'" width="166" height="98" alt="'+kind.name+' 참고 이미지, AI 생성"><div><span class="who">'+kind.label+'</span><span class="what">일어날 일은?</span></div></th>';}
+function predictionTable(readOnly=false){let out='<table class="prediction-table '+(readOnly?'record-table':'')+'" aria-label="사람 동물 식물의 여름과 겨울 예상표"><colgroup><col class="category-col"><col><col></colgroup><thead><tr><th scope="col">예상할 대상</th>'+SEASONS.map(s=>'<th scope="col" class="'+s.id+'" id="season-'+s.id+'">'+s.title+'</th>').join('')+'</tr></thead><tbody>';for(const k of KINDS){out+='<tr>'+categoryHeader(k);for(const s of SEASONS){const key=k.id+'_'+s.id,c=state.cells[key];out+='<td class="prediction-cell" headers="kind-'+k.id+' season-'+s.id+'"><span class="cell-season '+s.id+'">'+s.title+'</span>';if(readOnly){out+='<p class="record-answer '+(!c.prediction.trim()?'empty':'')+'">'+(esc(c.prediction)||'아직 기록하지 않은 칸이에요.')+'</p>'+(c.reason.trim()?'<p class="record-reason"><b>내가 예상한 까닭</b>'+esc(c.reason)+'</p>':'');}else{out+='<textarea data-cell="'+key+'" data-field="prediction" rows="3" maxlength="500" aria-label="'+k.name+' · '+s.title+' · 나의 예상" placeholder="'+k.name+'에게 어떤 일이 일어날까요?">'+esc(c.prediction)+'</textarea><div class="cell-tools"><button type="button" class="help-button" data-action="help" data-key="'+key+'" aria-label="'+k.name+' · '+s.title+' · 생각 도움">생각 도움</button><button type="button" class="reason-button '+(c.reason.trim()?'filled':'')+'" data-action="reason" data-key="'+key+'" aria-label="'+k.name+' · '+s.title+' · 예상한 까닭 적기">'+(c.reason.trim()?'까닭 기록 ✓':'까닭도 적기')+'</button></div>';}out+='</td>';}out+='</tr>';}return out+'</tbody></table>';}
+function tablePage(){return title('나의 계절 예상표','사람·동물·식물에게 일어날 일을 혼자 예상해 적어 봐요.',true)+'<div class="table-hint"><span>생각이 막히는 칸에서 <b>‘생각 도움’</b>을 열어 생활 자료를 읽어 보세요.</span><button type="button" class="text-button" data-action="graph">그래프 다시 보기</button></div>'+predictionTable()+'<p class="table-caption">교과서 89쪽 표의 구성 참고 · 각 칸의 예상을 직접 씁니다. 까닭 쓰기는 선택이에요. · 참고 사진: AI 생성 이미지</p><div class="action-row"><button type="button" class="button secondary" data-action="step" data-step="0">← 그래프 살펴보기</button><span class="note">도움 자료를 읽고 처음 생각을 고치거나 보충해도 좋아요.</span><button type="button" class="button" data-action="step" data-step="2">내 기록 한눈에 보기 →</button></div>';}
+function dateText(){return new Date().toLocaleDateString('ko-KR',{timeZone:'Asia/Seoul',year:'numeric',month:'long',day:'numeric'});}
+function recordPage(){const n=countWritten();return title('나의 생각을 한눈에 봐요','예상한 일과 까닭을 읽고, 더 궁금한 점도 남겨 보세요.',true)+'<div class="record-top"><div class="record-title"><h2>여름이 길어지고 겨울이 짧아진다면?</h2><p>여름 98일에서 118일로, 겨울 109일에서 87일로 달라진 두 기간을 보고 예상했어요.</p></div><label class="record-name">이름 <input type="text" maxlength="30" data-global="name" aria-label="이름, 선택 입력" placeholder="선택 입력" value="'+esc(state.name)+'"></label></div><p class="print-only" id="print-name">'+esc(state.name.trim()||'이름: __________')+' · '+dateText()+'</p>'+predictionTable(true)+'<p class="table-caption">그래프: 제공된 과학 교과서 88쪽(원자료: 기상청) · 표: 교과서 89쪽 구성 참고</p><div class="question-card"><label for="question">더 궁금한 점 <span class="micro-note">선택</span></label><textarea id="question" rows="2" maxlength="500" data-global="question" placeholder="계절의 길이 말고 무엇도 더 살펴보고 싶나요?">'+esc(state.question)+'</textarea><p id="print-question" class="print-only print-question">'+esc(state.question)+'</p><small>예상은 자료에 근거한 내 생각이에요. 앞으로 더 확인하고 싶은 것을 질문으로 적어도 좋아요.</small></div><div class="action-row"><button type="button" class="button secondary" data-action="step" data-step="1">← 예상표 고치기</button><div class="action-buttons"><button type="button" class="button" data-action="image">표를 이미지로 저장 ↓</button><button type="button" class="button secondary" data-action="text">글로 저장 ↓</button><button type="button" class="button ghost" data-action="print">인쇄</button></div></div><div class="action-row"><div class="record-status">'+(n===6?'여섯 칸의 예상을 모두 적었어요. 내 생각을 한 번 더 읽어 보세요.':'6칸 중 '+n+'칸에 내 생각을 적었어요. 빈칸은 돌아가서 더 생각해 볼 수 있어요.')+'</div><span class="micro-note">기록은 이 기기·이 브라우저에 저장돼요.</span></div>';}
+function render(){renderSteps();renderRail();main.dataset.page=String(state.step);main.innerHTML=(!storageOK?'<p class="source-warning">이 브라우저에서는 자동 저장이 어려워요. 활동 뒤 이미지나 글로 기록을 남겨 주세요.</p>':'')+[graphPage,tablePage,recordPage][state.step]();}
+function openDialog(heading,body){document.body.classList.add('has-dialog');document.querySelector('#dialog-content').innerHTML='<div class="dialog-header"><h2 id="dialog-title">'+heading+'</h2><div class="dialog-header-actions"><button type="button" class="button done-inline" data-action="done">입력 완료 ✓</button><button type="button" class="close" data-action="close" aria-label="닫기">×</button></div></div><div class="dialog-body">'+body+'</div>';if(!dialog.open)dialog.showModal();dialog.scrollTop=0;}
+function showGraph(){openDialog('교과서 그래프 다시 보기','<figure class="graph-enlarge"><img src="assets/textbook-season-graph.png" alt="교과서 88쪽 계절 길이 원형 그래프"><figcaption class="dialog-note">안쪽 고리: 1912~1940년 / 바깥쪽 고리: 1991~2020년<br>제공된 교과서 88쪽 발췌 · 원자료: 기상청</figcaption></figure><div style="max-width:700px;margin:18px auto 0">'+dataTable()+'</div>');}
+function showCell(key,focusReason=false){if(!CELL_KEYS.includes(key))return;activeCellKey=key;renderRail();const [ki,si]=key.split('_'),kind=KINDS.find(k=>k.id===ki),season=SEASONS.find(s=>s.id===si),h=HELPS[key],m=material(h.material),cell=state.cells[key];openDialog(kind.name+' · '+season.title,'<div class="help-tabs" role="group" aria-label="도움 화면 선택"><button type="button" data-action="help-view" data-view="read" aria-pressed="true">1. 자료 살펴보기</button><button type="button" data-action="help-view" data-view="write" aria-pressed="false">2. 내 생각 쓰기</button></div><div class="help-grid" data-view="read"><section class="help-reading"><img class="help-photo" src="assets/'+m.image+'" alt="'+m.title+' 수업용 AI 생성 실사형 이미지"><p class="image-note">AI로 만든 실사형 참고 이미지</p><div class="help-source"><h3>평소 생활에서 찾은 단서</h3><ul class="fact-list">'+h.facts.map(f=>'<li>'+esc(f)+'</li>').join('')+'</ul><div class="source-link">'+esc(h.source)+(h.links.length?'<br>'+h.links.map(l=>'<a href="'+esc(l.url)+'" target="_blank" rel="noopener noreferrer">'+esc(l.label)+' ↗</a>').join('<br>'):'')+'</div></div><div class="think-questions"><h3>이 단서를 보고 생각해요</h3>'+h.questions.map(q=>'<p>'+esc(q)+'</p>').join('')+'</div></section><section class="write-panel"><h3>이 칸에 쓸 나의 생각</h3><label class="field"><span>어떤 일이 일어날까요?</span><textarea data-cell="'+key+'" data-field="prediction" rows="4" maxlength="500" placeholder="도움 자료를 보고 내 예상을 직접 적어요." aria-label="도움 화면 · '+kind.name+' · '+season.title+' · 나의 예상">'+esc(cell.prediction)+'</textarea></label><label class="field"><span>이렇게 예상한 까닭 <span class="micro-note">선택</span></span><textarea class="reason-input" data-cell="'+key+'" data-field="reason" rows="3" maxlength="300" placeholder="자료의 어느 내용과 내 예상이 이어지나요?" aria-label="'+kind.name+' · '+season.title+' · 예상한 까닭">'+esc(cell.reason)+'</textarea><small>알게 된 생활 정보와 내 예상을 연결해 보세요.</small></label><div class="stem"><b>문장 시작이 어려울 때</b>'+(season.id==='summer'?'여름이 길어지면':'겨울이 짧아지면')+', ________ 것 같습니다.<br>그 까닭은 ________ 이기 때문입니다.</div></section></div><div class="dialog-actions"><small>이곳에 쓴 내용은 예상표의 같은 칸에 바로 저장돼요.</small><button type="button" class="button" data-action="close">표로 돌아가기 ✓</button></div>');setHelpView(focusReason?'write':'read');if(focusReason)dialog.querySelector('[data-field="reason"]').focus();}
+function showGuide(){openDialog('나 혼자 활동하는 방법','<div class="guide-steps"><div class="guide-step"><p><b>그래프 살펴보기</b>교과서 그래프와 수를 보고 여름과 겨울의 길이를 비교해요.</p></div><div class="guide-step"><p><b>여섯 칸에 내 생각 쓰기</b>우리(사람), 동물, 식물의 세 행과 여름·겨울의 두 열을 차례로 생각해요. 내가 아는 대상부터 써도 좋아요.</p></div><div class="guide-step"><p><b>필요할 때 생각 도움 열기</b>그 칸에 맞는 평소 생활 자료를 읽고 스스로 예상해요. 까닭은 원할 때 덧붙여요.</p></div><div class="guide-step"><p><b>기록을 읽고 남기기</b>표를 한눈에 읽고 고치거나 보충해요. 이미지나 글로 저장할 수 있어요.</p></div></div><div class="teacher-note"><b>선생님께</b><br>교과서 88~89쪽의 단원 도입 개인 활동을 돕는 구성입니다. 생각 도움은 생활 정보와 질문을 제공하며 완성된 답안을 넣어 주지 않습니다. 여름의 길이만으로 모든 날의 기온·비의 양을, 겨울의 길이만으로 모든 생물의 변화를 단정하지 않게 추가로 살필 조건을 물어 주세요. 기후 변화 현상의 종류·원인·피해·대응 방법의 정리는 후속 차시에 남겨 둡니다.<br>계정이나 입장 절차가 없고, 각 기기에 따로 저장됩니다. 공동 기기를 다음 학생에게 넘기기 전에 필요한 기록을 내려받고 이 활동의 기록을 지워 주세요.</div>');}
+function showSources(){const list=[{title:'교과서 그래프와 표',text:'제공된 과학 교과서 88쪽 그래프와 89쪽 표의 구성. 그래프 원자료: 기상청. 1912~1940년과 1991~2020년의 여름·겨울 길이를 비교합니다.',links:[]},{title:'우리(사람)의 생활',text:'옷 가게, 학교생활, 놀이 계획은 생각을 돕기 위한 수업용 가상 생활 자료입니다.',links:[]},{title:'동물의 생활',text:'모기와 지리산 북방산개구리의 생활 정보를 4학년이 읽기 쉽게 풀어썼습니다.',links:[...material('mosquito').sourceLinks,...material('frog').sourceLinks]},{title:'식물의 생활',text:'식물이 자라는 데 필요한 조건과 물 관리, 벚꽃이 피는 때에 관한 정보를 쉽게 풀어썼습니다.',links:[PLANT_SOURCE,...material('cherry').sourceLinks]}];openDialog('자료 출처', '<ul class="source-list">'+list.map(x=>'<li><b>'+x.title+'</b><p>'+x.text+'</p>'+x.links.map(l=>'<a href="'+esc(l.url)+'" target="_blank" rel="noopener noreferrer">'+esc(l.label)+' ↗</a>').join('<br>')+'</li>').join('')+'</ul><p class="dialog-note">그래프 이미지는 제공된 교과서의 해당 부분을 발췌했습니다. 생활 자료의 실사형 사진은 AI 생성 참고 이미지이며 실제 관찰 사진은 아닙니다. 특정 동물의 생활 정보를 모든 동물에 똑같이 적용하지 않도록 합니다.</p>');}
 function downloadBlob(blob,name){const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);}
-function safeName(){return (state.name.trim()||'나의').replace(/[\\/:*?"<>|\x00-\x1F]/g,'_').slice(0,30);}
-function exportText(){
-  const t=topic();const content=`계절 탐정단 · 나의 탐구 기록\n여름이 길어지고 겨울이 짧아진다면?\n자료 ${t.no} · ${t.title}\n이름: ${state.name.trim()||'(입력하지 않음)'}\n${dateString()}\n\n${recordSections().map(([label,value])=>`[${label}]\n${value.trim()||'(아직 적지 않음)'}`).join('\n\n')}\n\n[자료 출처]\n${t.source}\n${t.sourceLinks.map(l=>`${l.label}\n${l.url}`).join('\n')}\n이미지: AI로 만든 실사형 참고 이미지\n`;
-  downloadBlob(new Blob(['\uFEFF'+content],{type:'text/plain;charset=utf-8'}),`${safeName()}_계절탐정단_${t.title}.txt`);toast('탐구 기록을 글 파일로 저장했어요.');
-}
-function wrapText(ctx,text,maxWidth){
-  const lines=[];
-  for(const paragraph of String(text).split('\n')){if(!paragraph){lines.push('');continue;}let line='';for(const ch of Array.from(paragraph)){if(ctx.measureText(line+ch).width>maxWidth&&line){lines.push(line);line=ch;}else line+=ch;}lines.push(line);}
-  return lines;
-}
-function rounded(ctx,x,y,w,h,r){ctx.beginPath();ctx.roundRect(x,y,w,h,r);ctx.fill();}
-async function exportImage(){
-  toast('탐구 기록 이미지를 만들고 있어요.');
-  try{
-    const t=topic(),c=document.createElement('canvas'),ctx=c.getContext('2d');c.width=1400;
-    const sections=recordSections().filter(([label,value])=>value.trim()||['처음 예상','자료에서 찾은 근거','그렇게 연결한 까닭','토의 후 다듬은 예상','앞으로 확인하고 싶은 질문'].includes(label));
-    ctx.font='29px "Malgun Gothic", "Noto Sans KR", sans-serif';
-    const blocks=sections.map(([label,value])=>({label,lines:wrapText(ctx,value.trim()||'(아직 적지 않음)',1180)}));
-    const height=380+blocks.reduce((total,b)=>total+102+b.lines.length*44,0)+100;
-    // With each field capped at 1,200 characters this stays within tablet canvas limits.
-    c.height=height;ctx.fillStyle='#fffcf5';ctx.fillRect(0,0,c.width,c.height);
-    ctx.fillStyle='#176b58';ctx.fillRect(0,0,c.width,14);
-    ctx.fillStyle='#587463';ctx.font='bold 21px "Malgun Gothic", sans-serif';ctx.fillText('계절 탐정단 · 나의 탐구 기록',80,76);
-    ctx.fillStyle='#243b34';ctx.font='bold 43px "Malgun Gothic", sans-serif';ctx.fillText('여름이 길어지고 겨울이 짧아진다면?',80,142);
-    ctx.fillStyle=t.tone;ctx.font='bold 30px "Malgun Gothic", sans-serif';ctx.fillText(`자료 ${t.no} · ${t.title}`,80,201);
-    ctx.fillStyle='#66786d';ctx.font='23px "Malgun Gothic", sans-serif';ctx.fillText(`${state.name.trim()||'이름 없음'}  ·  ${dateString()}`,80,252);
-    let y=290;
-    for(const b of blocks){const h=76+b.lines.length*44;ctx.fillStyle='white';rounded(ctx,60,y,1280,h,18);ctx.fillStyle='#176b58';ctx.font='bold 23px "Malgun Gothic", sans-serif';ctx.fillText(b.label,90,y+37);ctx.fillStyle='#243b34';ctx.font='29px "Malgun Gothic", "Noto Sans KR", sans-serif';b.lines.forEach((line,i)=>ctx.fillText(line,90,y+81+i*44));y+=h+26;}
-    ctx.fillStyle='#66786d';ctx.font='18px "Malgun Gothic", sans-serif';wrapText(ctx,t.source,1220).forEach((line,i)=>ctx.fillText(line,80,y+22+i*28));ctx.fillText('계절 탐정단 · 자료를 근거로 예상하고, 앞으로 확인할 질문을 남겨요.',80,y+83);
-    const blob=await new Promise(resolve=>c.toBlob(resolve,'image/png'));if(!blob)throw new Error('Canvas export failed');
-    const filename=`${safeName()}_계절탐정단_${t.title}.png`;downloadBlob(blob,filename);
-    openDialog('나의 탐구 기록 이미지',`<p style="margin-bottom:15px">다운로드한 이미지에 모든 기록이 담겨 있어요. 태블릿에서 다운로드가 열리지 않으면 아래 이미지를 길게 눌러 저장할 수 있어요.</p><img class="dialog-preview-image" src="${c.toDataURL('image/png')}" alt="${esc(t.title)}에 대한 나의 탐구 기록 이미지">`);
-  }catch(e){toast('이미지 저장이 어려워요. ‘글로 저장’을 이용해 주세요.');}
-}
-function resetAll(){openDialog('이 기기의 기록을 지울까요?',`<p>네 자료에 적은 내용과 이름이 모두 지워져요.<br>필요한 기록은 먼저 이미지나 글 파일로 저장해 주세요.</p><div class="confirm-actions"><button type="button" class="button secondary" data-action="close">돌아가기</button><button type="button" class="button" data-action="confirm-reset">모든 기록 지우기</button></div>`);}
-function markEdited(){
-  draft().complete=false;
-  document.querySelector('.complete-banner')?.remove();
-  const button=document.querySelector('[data-action="complete"]');if(button)button.textContent='나의 탐구 마치기 ✓';
-}
-document.addEventListener('input',event=>{
-  const key=event.target.dataset.field;if(!key)return;
-  if(key==='name')state.name=event.target.value;else if(textFields.includes(key)&&topic()){draft()[key]=event.target.value;markEdited();}else return;
-  save();const summary=document.querySelector('#live-summary');if(summary)summary.innerHTML=summaryHTML();
-});
-document.addEventListener('change',event=>{if(event.target.dataset.check!==undefined&&topic()){draft().checks[Number(event.target.dataset.check)]=event.target.checked;save();}});
-document.addEventListener('click',async event=>{
-  const btn=event.target.closest('[data-action]');if(!btn||btn.disabled)return;
-  switch(btn.dataset.action){
-    case 'home':navigate(0);break;
-    case 'step':navigate(Number(btn.dataset.step));break;
-    case 'choose':{if(!topicById(btn.dataset.id))return;state.topic=btn.dataset.id;draft();navigate(1);break;}
-    case 'resume':navigate(Math.max(1,draft().maxStep));break;
-    case 'reveal':{draft().revealed=true;save();render();document.querySelector('#clue-panel h3')?.scrollIntoView({block:'nearest'});break;}
-    case 'evidence':{const i=Number(btn.dataset.index),d=draft();d.evidence=d.evidence.includes(i)?d.evidence.filter(n=>n!==i):[...d.evidence,i].sort();d.complete=false;btn.classList.toggle('selected',d.evidence.includes(i));btn.setAttribute('aria-pressed',String(d.evidence.includes(i)));save();break;}
-    case 'to-talk':{
-      const d=draft();if(!d.first.trim()){showValidation('먼저 내 예상을 한 가지 적어 주세요.','first');return;}
-      if(!d.revealed||!d.evidence.length){showValidation('자료의 단서를 열고, 내 예상의 근거가 되는 문장을 골라 주세요.');if(!d.revealed)document.querySelector('[data-action="reveal"]')?.focus();else document.querySelector('.fact')?.focus();return;}
-      if(!d.reason.trim()){showValidation('자료의 내용이 내 예상과 어떻게 이어지는지 적어 주세요.','reason');return;}
-      d.maxStep=Math.max(d.maxStep,2);navigate(2);break;
-    }
-    case 'to-final':draft().maxStep=3;navigate(3);break;
-    case 'connect':{const d=draft(),id=btn.dataset.id;d.connected=d.connected.includes(id)?d.connected.filter(x=>x!==id):[...d.connected,id];btn.classList.toggle('selected',d.connected.includes(id));btn.setAttribute('aria-pressed',String(d.connected.includes(id)));save();break;}
-    case 'change':{const d=draft();d.change=changes[Number(btn.dataset.index)];document.querySelectorAll('[data-action="change"]').forEach((b,i)=>{b.classList.toggle('selected',changes[i]===d.change);b.setAttribute('aria-pressed',String(changes[i]===d.change));});markEdited();save();break;}
-    case 'complete':{const d=draft();if(!d.final.trim()){showValidation('토의 후 다듬은 예상을 적어 주세요.','final');return;}if(!d.question.trim()){showValidation('단원을 배우며 더 확인하고 싶은 질문을 남겨 주세요.','question');return;}d.complete=true;save();render();toast('나의 탐구 기록을 완성했어요!');main.focus({preventScroll:true});window.scrollTo({top:0,behavior:'instant'});break;}
-    case 'present':openDialog('내 자료를 보여 줄게요',showCard(true),true);break;
-    case 'sources':showSources();break;
-    case 'seasons':showSeasons();break;
-    case 'guide':showGuide();updateTimer();break;
-    case 'close':dialog.close();break;
-    case 'text':exportText();break;
-    case 'image':await exportImage();break;
-    case 'print':window.print();break;
-    case 'reset':resetAll();break;
-    case 'confirm-reset':{stopTimer();timer.remaining=timer.seconds;timer.warned=false;state={version:1,topic:null,step:0,name:'',drafts:{}};save();dialog.close();render();main.focus({preventScroll:true});toast('이 기기의 기록을 지웠어요. 새로 시작할 수 있어요.');break;}
-    case 'timer-preset':{stopTimer();timer.seconds=Number(btn.dataset.minutes)*60;timer.remaining=timer.seconds;timer.warned=false;updateTimer();break;}
-    case 'timer-start':{initAudio();if(timer.running){stopTimer();}else{if(timer.remaining<=0)timer.remaining=timer.seconds;timer.end=Date.now()+timer.remaining*1000;timer.running=true;timer.warned=timer.remaining<=5;clearInterval(timerInterval);timerInterval=setInterval(updateTimer,200);}updateTimer();break;}
-    case 'timer-reset':stopTimer();timer.remaining=timer.seconds;timer.warned=false;updateTimer();break;
-  }
-});
-dialog.addEventListener('click',e=>{if(e.target===dialog){const rect=dialog.getBoundingClientRect();if(e.clientX<rect.left||e.clientX>rect.right||e.clientY<rect.top||e.clientY>rect.bottom)dialog.close();}});
-document.addEventListener('visibilitychange',()=>{if(!document.hidden)updateTimer();});
+const safeName=()=>((state.name.trim()||'나의').replace(/[\\/:*?"<>|\x00-\x1f]/g,'_').slice(0,30));
+function exportText(){let content='나의 계절 예상표\n여름이 길어지고 겨울이 짧아진다면?\n이름: '+(state.name.trim()||'(선택 입력)')+'\n'+dateText()+'\n\n[그래프에서 읽은 수]\n1912~1940년: 여름 98일, 겨울 109일\n1991~2020년: 여름 118일, 겨울 87일\n여름은 20일 길어지고, 겨울은 22일 짧아졌습니다.\n';for(const k of KINDS){content+='\n['+k.label+' 일어날 일]\n';for(const s of SEASONS){const c=state.cells[k.id+'_'+s.id];content+='\n'+s.title+'\n'+(c.prediction.trim()||'(아직 적지 않음)')+'\n';if(c.reason.trim())content+='예상한 까닭: '+c.reason+'\n';}}content+='\n[더 궁금한 점]\n'+(state.question.trim()||'(선택 입력)')+'\n\n그래프: 제공된 과학 교과서 88쪽(원자료: 기상청)\n표: 교과서 89쪽 구성 참고\n생활 자료의 원문 링크는 웹앱 자료 출처에 있습니다.\n';downloadBlob(new Blob(['\uFEFF'+content],{type:'text/plain;charset=utf-8'}),safeName()+'_계절_예상표.txt');toast('예상표를 글 파일로 저장했어요.');}
+function wrapText(ctx,value,maxWidth){const lines=[];for(const paragraph of String(value).split('\n')){if(!paragraph){lines.push('');continue;}let line='';for(const ch of Array.from(paragraph)){if(ctx.measureText(line+ch).width>maxWidth&&line){lines.push(line);line=ch;}else line+=ch;}lines.push(line);}return lines;}
+function fillRound(ctx,x,y,w,h,r,color){ctx.fillStyle=color;ctx.beginPath();ctx.roundRect(x,y,w,h,r);ctx.fill();}
+async function exportImage(){toast('나의 예상표 이미지를 만들고 있어요.');try{const canvas=document.createElement('canvas'),ctx=canvas.getContext('2d');canvas.width=1500;const left=60,kindWidth=220,colWidth=580,tableWidth=1380;const rows=KINDS.map(k=>{const cells=SEASONS.map(s=>{const c=state.cells[k.id+'_'+s.id];ctx.font='26px "Noto Sans CJK KR", "Malgun Gothic", sans-serif';const prediction=wrapText(ctx,c.prediction.trim()||'(아직 적지 않음)',colWidth-48);ctx.font='23px "Noto Sans CJK KR", "Malgun Gothic", sans-serif';const reason=c.reason.trim()?wrapText(ctx,'까닭: '+c.reason.trim(),colWidth-48):[];return {prediction,reason};});const height=Math.max(160,...cells.map(c=>52+c.prediction.length*38+(c.reason.length?25+c.reason.length*34:0)));return {kind:k,cells,height};});ctx.font='25px "Noto Sans CJK KR", "Malgun Gothic", sans-serif';const question=state.question.trim()?wrapText(ctx,state.question.trim(),tableWidth-46):[];canvas.height=405+rows.reduce((t,r)=>t+r.height,0)+(question.length?110+question.length*37:0);ctx.fillStyle='#fffcf5';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.fillStyle='#176b58';ctx.fillRect(0,0,1500,12);ctx.font='bold 24px "Malgun Gothic",sans-serif';ctx.fillText('계절 탐정단 · 나의 계절 예상표',left,68);ctx.fillStyle='#243b34';ctx.font='bold 43px "Noto Sans CJK KR", "Malgun Gothic",sans-serif';ctx.fillText('여름이 길어지고 겨울이 짧아진다면?',left,135);ctx.fillStyle='#65766b';ctx.font='24px "Malgun Gothic",sans-serif';ctx.fillText((state.name.trim()||'이름 없음')+'  ·  '+dateText(),left,184);ctx.font='22px "Malgun Gothic",sans-serif';ctx.fillText('1912~1940년과 1991~2020년 비교: 여름 98일 → 118일, 겨울 109일 → 87일',left,230);let y=262;fillRound(ctx,left,y,tableWidth,68,0,'#eef3e7');ctx.fillStyle='#fff0d9';ctx.fillRect(left+kindWidth,y,colWidth,68);ctx.fillStyle='#e7f1f5';ctx.fillRect(left+kindWidth+colWidth,y,colWidth,68);ctx.textAlign='center';ctx.font='bold 28px "Noto Sans CJK KR", "Malgun Gothic",sans-serif';ctx.fillStyle='#65766b';ctx.fillText('예상할 대상',left+kindWidth/2,y+45);ctx.fillStyle='#af6037';ctx.fillText('여름이 길어진다면',left+kindWidth+colWidth/2,y+45);ctx.fillStyle='#3a788f';ctx.fillText('겨울이 짧아진다면',left+kindWidth+colWidth*1.5,y+45);ctx.textAlign='left';y+=68;for(const row of rows){ctx.fillStyle='#f3f7eb';ctx.fillRect(left,y,kindWidth,row.height);ctx.fillStyle='white';ctx.fillRect(left+kindWidth,y,colWidth*2,row.height);ctx.textAlign='center';ctx.fillStyle='#176b58';ctx.font='bold 25px "Noto Sans CJK KR", "Malgun Gothic",sans-serif';ctx.fillText(row.kind.label,left+kindWidth/2,y+row.height/2-4);ctx.font='22px "Malgun Gothic",sans-serif';ctx.fillStyle='#65766b';ctx.fillText('일어날 일',left+kindWidth/2,y+row.height/2+33);ctx.textAlign='left';for(let i=0;i<2;i++){const c=row.cells[i],x=left+kindWidth+i*colWidth+24;ctx.fillStyle='#243b34';ctx.font='26px "Noto Sans CJK KR", "Malgun Gothic",sans-serif';c.prediction.forEach((line,j)=>ctx.fillText(line,x,y+41+j*38));if(c.reason.length){const reasonY=y+41+c.prediction.length*38+18;ctx.fillStyle='#65766b';ctx.font='23px "Noto Sans CJK KR", "Malgun Gothic",sans-serif';c.reason.forEach((line,j)=>ctx.fillText(line,x,reasonY+j*34));}}ctx.strokeStyle='#d5dfce';ctx.lineWidth=1.5;ctx.strokeRect(left,y,tableWidth,row.height);ctx.beginPath();ctx.moveTo(left+kindWidth,y);ctx.lineTo(left+kindWidth,y+row.height);ctx.moveTo(left+kindWidth+colWidth,y);ctx.lineTo(left+kindWidth+colWidth,y+row.height);ctx.stroke();y+=row.height;}if(question.length){y+=28;fillRound(ctx,left,y,tableWidth,75+question.length*37,12,'#eaf3e4');ctx.fillStyle='#176b58';ctx.font='bold 24px "Malgun Gothic",sans-serif';ctx.fillText('더 궁금한 점',left+22,y+36);ctx.font='25px "Noto Sans CJK KR", "Malgun Gothic",sans-serif';ctx.fillStyle='#243b34';question.forEach((line,i)=>ctx.fillText(line,left+22,y+77+i*37));y+=75+question.length*37;}ctx.fillStyle='#65766b';ctx.font='18px "Malgun Gothic",sans-serif';ctx.fillText('그래프: 제공된 과학 교과서 88쪽(원자료: 기상청) · 표: 교과서 89쪽 구성 참고',left,y+53);const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));if(!blob)throw new Error('no image');downloadBlob(blob,safeName()+'_계절_예상표.png');openDialog('나의 계절 예상표 이미지','<p style="font-size:15px">내가 쓴 여섯 칸과 까닭이 이미지에 담겼어요. 다운로드가 열리지 않으면 아래 이미지를 길게 눌러 저장할 수 있어요.</p><img class="export-image" src="'+canvas.toDataURL('image/png')+'" alt="나의 계절 예상표 기록 이미지">');}catch(e){toast('이미지 저장이 어려워요. 글로 저장을 이용해 주세요.');}}
+function confirmReset(){openDialog('이 활동의 기록을 지울까요?','<p>이 예상표의 여섯 칸과 이름, 질문이 지워져요.<br>필요한 기록은 먼저 이미지나 글로 저장해 주세요.</p><div class="confirm-actions"><button type="button" class="button secondary" data-action="close">돌아가기</button><button type="button" class="button" data-action="reset-confirm">이 활동 기록 지우기</button></div>');}
+function setHelpView(view){const grid=dialog.querySelector('.help-grid');if(!grid)return;grid.dataset.view=view==='write'?'write':'read';dialog.querySelectorAll('[data-action="help-view"]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.view===grid.dataset.view)));}
+function isEditable(el){return !!el?.matches?.('textarea,input:not([type="button"]):not([type="submit"])');}
+function updateEditing(){const el=document.activeElement;const editing=isEditable(el)||!!el?.closest?.('[data-action="done"]');document.body.classList.toggle('editing',editing);}
+function keepEditorVisible(){const el=document.activeElement;if(!isEditable(el))return;const owner=el.closest('dialog');if(!owner)return;const r=el.getBoundingClientRect(),box=owner.getBoundingClientRect(),head=owner.querySelector('.dialog-header').getBoundingClientRect();const top=head.bottom+12,bottom=box.bottom-14;if(r.top<top||r.bottom>bottom)owner.scrollTop+=r.top-top;}
+function updateViewport(){const vv=window.visualViewport;document.documentElement.style.setProperty('--visible-height',(vv?.height||window.innerHeight)+'px');document.documentElement.style.setProperty('--visible-top',(vv?.offsetTop||0)+'px');document.documentElement.style.setProperty('--keyboard-inset',Math.max(0,window.innerHeight-(vv?.height||window.innerHeight)-(vv?.offsetTop||0))+'px');requestAnimationFrame(keepEditorVisible);}
+function finishEditing(){if(isEditable(document.activeElement))document.activeElement.blur();document.body.classList.remove('editing');document.querySelectorAll('[data-action="done"]').forEach(b=>{if(b===document.activeElement)b.blur();});}
+async function toggleFullscreen(){try{if(document.fullscreenElement)await document.exitFullscreen();else if(document.documentElement.requestFullscreen)await document.documentElement.requestFullscreen();else toast('이 브라우저에서는 전체화면을 지원하지 않아요.');}catch(e){toast('전체화면을 열 수 없어요. 브라우저에서 직접 열어 주세요.');}}
+document.addEventListener('fullscreenchange',()=>{const b=document.querySelector('#fullscreen-toggle');const yes=!!document.fullscreenElement;b.textContent=yes?'화면 줄이기 ⛶':'전체화면 ⛶';b.setAttribute('aria-pressed',String(yes));updateViewport();});
+window.addEventListener('resize',updateViewport,{passive:true});window.visualViewport?.addEventListener('resize',updateViewport,{passive:true});window.visualViewport?.addEventListener('scroll',updateViewport,{passive:true});
+document.addEventListener('focusout',()=>requestAnimationFrame(updateEditing));
+dialog.addEventListener('close',()=>{document.body.classList.remove('has-dialog');requestAnimationFrame(updateEditing);});
+updateViewport();
+document.addEventListener('focusin',event=>{updateEditing();requestAnimationFrame(keepEditorVisible);const key=event.target.dataset.cell;if(CELL_KEYS.includes(key)&&key!==activeCellKey){activeCellKey=key;renderRail();}});
+document.addEventListener('input',event=>{const el=event.target,key=el.dataset.cell,field=el.dataset.field;if(CELL_KEYS.includes(key)&&['prediction','reason'].includes(field)){state.cells[key][field]=el.value.slice(0,field==='prediction'?500:300);document.querySelectorAll('[data-cell="'+key+'"][data-field="'+field+'"]').forEach(other=>{if(other!==el)other.value=state.cells[key][field];});updateCounter();save();return;}const global=el.dataset.global;if(global==='name'||global==='question'){state[global]=el.value.slice(0,global==='name'?30:500);if(global==='name'){const p=document.querySelector('#print-name');if(p)p.textContent=(state.name.trim()||'이름: __________')+' · '+dateText();}else{const p=document.querySelector('#print-question');if(p)p.textContent=state.question;}save();return;}const compare=el.dataset.compare;if(SEASONS.some(s=>s.id===compare)){state.comparison[compare]=el.value.replace(/\D/g,'').slice(0,3);el.value=state.comparison[compare];state.comparison.checked=false;const feedback=document.querySelector('#compare-feedback');if(feedback)feedback.textContent='';save();}});
+document.addEventListener('click',async event=>{const b=event.target.closest('[data-action]');if(!b||b.disabled)return;switch(b.dataset.action){case 'fullscreen':await toggleFullscreen();break;case 'done':finishEditing();break;case 'help-view':setHelpView(b.dataset.view);break;case 'step':go(Number(b.dataset.step));break;case 'graph':showGraph();break;case 'compare':state.comparison.checked=true;save();document.querySelector('#compare-feedback').textContent=comparisonFeedback();break;case 'help':showCell(b.dataset.key);break;case 'reason':showCell(b.dataset.key,true);break;case 'guide':showGuide();break;case 'sources':showSources();break;case 'close':dialog.close();break;case 'image':await exportImage();break;case 'text':exportText();break;case 'print':window.print();break;case 'reset':confirmReset();break;case 'reset-confirm':state=freshState();save();dialog.close();render();main.focus({preventScroll:true});toast('이 활동의 기록을 지웠어요.');break;}});
+dialog.addEventListener('click',event=>{if(event.target===dialog){const r=dialog.getBoundingClientRect();if(event.clientX<r.left||event.clientX>r.right||event.clientY<r.top||event.clientY>r.bottom)dialog.close();}});
 restore();render();

@@ -1,32 +1,33 @@
 <!doctype html>
 <html lang="ko">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#176b58">
-  <meta name="description" content="여름이 길어지고 겨울이 짧아진다면? 네 가지 자료를 나눠 읽고, 근거를 찾아 예상하며, 태블릿을 보여 주고 토의하는 4학년 과학 탐구 활동입니다.">
-  <title>계절 탐정단 | 여름이 길어지고 겨울이 짧아진다면?</title>
-  <link rel="icon" type="image/svg+xml" href="assets/logo.svg">
-  <link rel="stylesheet" href="styles.css">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content">
+<meta name="theme-color" content="#0b1427">
+<meta name="description" content="교과서의 계절 길이 그래프를 보고 사람·동물·식물에게 일어날 일을 여섯 칸에 혼자 예상해 정리하는 4학년 과학 개인 활동">
+<title>계절 탐정단 · 나의 계절 예상표</title>
+<link rel="icon" type="image/svg+xml" href="assets/logo.svg">
+<link rel="stylesheet" href="styles.css?v=20261117-tablet">
 </head>
 <body>
-  <a class="skip-link" href="#main">본문 바로 가기</a>
-  <header class="site-header">
-    <button type="button" class="brand" data-action="home" aria-label="계절 탐정단 자료 선택으로">
-      <img src="assets/logo.svg" alt="" width="43" height="43">
-      <span>계절 탐정단<small>4학년 과학 · 단원 열기</small></span>
-    </button>
-    <div class="header-actions">
-      <span id="save-state" class="save-state" role="status">이 기기에 자동 저장</span>
-      <button type="button" class="button ghost small" data-action="guide">수업 안내</button>
-      <button type="button" class="button ghost small" data-action="sources">자료 출처</button>
-    </div>
-  </header>
-  <nav id="progress" class="progress" aria-label="활동 단계"></nav>
-  <main id="main" tabindex="-1"></main>
-  <footer class="site-footer"><span>정답을 맞히기보다, 자료를 보고 이유를 생각해요.</span><button type="button" data-action="reset">이 기기의 기록 지우기</button></footer>
-  <dialog id="dialog" aria-labelledby="dialog-title"><div id="dialog-content"></div></dialog>
-  <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script src="app.js" defer></script>
-</body>
-</html>
+<a class="skip" href="#main">본문 바로 가기</a>
+<header class="site-header">
+<button class="brand" type="button" data-action="step" data-step="0" aria-label="계절 탐정단 그래프 화면으로"><span class="subject-tag">4학년 과학 <small>계절 탐정단</small></span><span class="brand-title">여름이 길어지고<br class="mobile-break"> 겨울이 짧아진다면?</span></button>
+<div class="header-actions"><span id="save-state" class="save-state" role="status">이 기기에 자동 저장</span><button class="button ghost small fullscreen-button" id="fullscreen-toggle" type="button" data-action="fullscreen" aria-pressed="false">전체화면 ⛶</button><button class="button ghost small" type="button" data-action="guide">활동 안내</button><button class="button ghost small" type="button" data-action="sources">자료 출처</button></div>
+</header>
+<div class="dashboard">
+<aside class="activity-rail" aria-label="나의 탐구 안내">
+<div class="rail-header"><h2>나의 탐구 안내</h2><span id="rail-step">STEP 1/3</span></div>
+<nav id="steps" class="steps" aria-label="활동 순서"></nav>
+<button id="compact-help" class="button secondary compact-help" type="button" data-action="graph">그래프 크게</button>
+<div id="rail-content"></div>
+<div class="rail-footer"><span class="live-dot"></span>나 혼자 예상하고 정리하는 시간</div>
+</aside>
+<main id="main" tabindex="-1"></main>
+</div>
+<footer class="site-footer"><span>자료를 보고 예상해요. 내 생각은 내가 적어요.</span><button type="button" data-action="reset">이 활동의 기록 지우기</button></footer>
+<dialog id="dialog" aria-labelledby="dialog-title"><div id="dialog-content"></div></dialog>
+<div class="input-tools"><span>작성한 내용은 자동 저장돼요.</span><button class="button" type="button" data-action="done">입력 완료 ✓</button></div>
+<div id="toast" role="status" aria-live="polite"></div>
+<script src="materials.js?v=20261117-tablet"></script><script src="app.js?v=20261117-tablet" defer></script>
+</body></html>
